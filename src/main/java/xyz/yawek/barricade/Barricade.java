@@ -19,7 +19,9 @@
 package xyz.yawek.barricade;
 
 import com.google.inject.Inject;
+import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
+import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.event.EventManager;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -28,6 +30,7 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.slf4j.Logger;
+import xyz.yawek.barricade.command.BlacklistOverride;
 import xyz.yawek.barricade.command.CommandHandler;
 import xyz.yawek.barricade.config.Config;
 import xyz.yawek.barricade.config.ConfigProvider;
@@ -101,6 +104,12 @@ public class Barricade {
         CommandManager commandManager = server.getCommandManager();
         commandManager.register(commandManager.metaBuilder("barricade").build(),
                 new CommandHandler(this));
+        CommandMeta commandMeta = commandManager.metaBuilder("blacklist")
+                .plugin(this)
+                .build();
+
+        // Finally, you can register the command
+        commandManager.register(commandMeta, new BlacklistOverride());
 
         this.taskLoader = new TaskLoader(this);
         taskLoader.loadTasks();

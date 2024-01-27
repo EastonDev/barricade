@@ -19,6 +19,7 @@
 package xyz.yawek.barricade.command.subcommand;
 
 import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.Player;
 import org.jetbrains.annotations.NotNull;
 import xyz.yawek.barricade.Barricade;
 import xyz.yawek.barricade.command.PermissibleCommand;
@@ -57,10 +58,19 @@ public class BlacklistCommand extends PermissibleCommand {
 
                     barricade.getServer().getAllPlayers().stream()
                             .filter(player -> player.getRemoteAddress()
-                                    .getHostName().equals(storedAddress.getAddress()))
-                            .forEach(player -> player.disconnect(config.blacklisted()));
+                                    .getAddress().getHostAddress().equals(storedAddress.getAddress()))
+                            .forEach(player -> {
+                                Optional<StoredUser> storedUserOptional = barricade.getStoredUserManager().getOptional(player.getUsername());
+                                StoredUser storedUser = storedUserOptional.get();
+                                storedUser.setBlacklisted(true);
+                                storedUserManager.update(storedUser);
+                                player.disconnect(config.blacklisted());
+                            });
+
                     return;
                 }
+
+                // End of ip blacklist Command
 
                 Optional<StoredUser> storedUserOptional =
                         barricade.getStoredUserManager().getOptional(args[1]);
@@ -70,12 +80,27 @@ public class BlacklistCommand extends PermissibleCommand {
                         source.sendMessage(config.playerAlreadyBlacklisted(args[1]));
                         return;
                     }
+
                     storedUser.setBlacklisted(true);
                     storedUserManager.update(storedUser);
-                    source.sendMessage(config.playerBlacklisted(args[1]));
+                    Player playerInfo = Barricade.getBarricade().getServer().getPlayer(args[1]).get();
+                    storedAddressOptional =
+                            barricade.getAddressManager().getOptional(playerInfo.getRemoteAddress().getAddress().getHostAddress());
+                    StoredAddress storedAddress = storedAddressOptional.get();
 
+                    storedAddress.setBlacklisted(true);
+                    addressManager.update(storedAddress);
+
+                    source.sendMessage(config.playerBlacklisted(args[1]));
+                    this.barricade.getLogger().debug(storedAddress.getAddress());
                     barricade.getServer().getPlayer(storedUser.getNickname())
                             .ifPresent(player -> player.disconnect(config.blacklisted()));
+                    barricade.getServer().getAllPlayers().stream()
+                            .filter(player -> player.getRemoteAddress()
+                                    .getAddress().getHostAddress().equals(storedAddress.getAddress()))
+                            .forEach(player -> {
+                                player.disconnect(config.blacklisted());
+                            });
                     return;
                 }
                 source.sendMessage(config.wrongAddressPlayer(args[1]));
@@ -105,6 +130,13 @@ public class BlacklistCommand extends PermissibleCommand {
                     }
                     storedUser.setBlacklisted(false);
                     storedUserManager.update(storedUser);
+                    storedUser.getAddresses().forEach((address) -> {
+                        Optional<StoredAddress> storedAddressOptional1 = barricade.getAddressManager().getOptional(address);
+                    StoredAddress storedAddress = storedAddressOptional1.get();
+
+                    storedAddress.setBlacklisted(false);
+                    addressManager.update(storedAddress);
+                    });
                     source.sendMessage(config.playerBlacklistRemoved(args[1]));
                     return;
                 }
